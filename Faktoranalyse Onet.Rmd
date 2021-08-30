@@ -1,0 +1,240 @@
+---
+title: "Faktoranalyse O*net"
+output: html_notebook
+---
+ 
+
+## Exploratory Factor analysis of the O*NET data 
+Using the R package Psych
+
+
+```{r}
+
+library(tidyverse)
+library(psych)
+#install.packages("psych")
+
+
+
+data <- as_tibble(read.delim("C:\\Users\\torm\\OneDrive - Kompetanse Norge\\Dokumenter\\GitHub\\Onet\\Faktoranalyse-O-net\\onet_rdatasett.tsv"))
+
+meta <- c("nr", "utdanningno_yrke", "BesÃ.kstall.pr.Ã.r.utdanning.no", "andel_menn", "andel_menn_0_40", "antall", "interesse")    
+da <- data[,!names(data) %in% meta] #removing meta data
+
+#Combined analysis
+all <- da
+names(all) <- str_split(names(all),"\\.\\.\\.", simplify = T)[,2] #simplify colnames
+#names(all) <- seq_along(lengths(names(all)))
+```
+
+Start looking at data. Using all 161 variables and 301 observations (job descriptions)
+
+Descriptive analysis and graphical test for normality (requirement for factor analysis). 
+
+```{r }
+(dec <- describe(all)) # test normality assumptions. We want skew and kurtosis = 0. 
+mardia(all) #mardia is a test for normality
+```
+```{r}
+mardia(all, plot = T) #mardia is a test for normality
+
+```
+
+Some issues with non-normality but does not look too bad graphically 
+
+Generating the correlation matrix and a scree plot + parallel analysis for deciding the number of factors
+```{r}
+S <- cor(all, method = "pearson")
+
+scree(S)
+
+fa.parallel(x= S, n.obs = 301)
+```
+
+## How many factors?
+Parallel analysiys and Kaiser-Guttman rule suggest around 10 factors. Looking for the elbow gives 4 factors
+
+
+### Running a 10 factor model
+```{r}
+#(efamodel1 <- fa(r=S, nfactors = 10,  fm= "minres", n.obs = 301, max.iter = 2000)) #No convergence
+(efamodel1.2 <- fa(r=S, nfactors = 10,  fm= "ml", n.obs = 301)) #Changing to ML estimator
+```
+
+Define function to extract indicators and their loadings per defined factor. Input is the estimated EFA model, number of max and min indicators per factor. Output is indicators, factors and loadings in long format
+
+```{r}
+Ind_per_factor <- function(a, slice_ma, slice_mi) {
+  data <- as.data.frame(a$loadings[,1:ncol(a$loading)])
+  data <- tibble("Indikator"=rownames(data),data)
+  
+endelig <- data.frame(matrix(nrow = 0, ncol = 3))
+colnames(endelig) <- c("Indikator", "Ladning", "Faktor")
+for(col in colnames(data[2:ncol(data)])) {
+  tmp <- data[c("Indikator", col)]
+  colnames(tmp) <- c("Indikator", "Ladning")
+  tmp["Faktor"] <- col
+  tmpmax <- tmp %>% slice_max(order_by = Ladning, n = slice_ma)
+  tmpmin <- tmp %>% slice_min(order_by = Ladning, n = slice_mi)
+  tmpend <- bind_rows(tmpmax, tmpmin)
+  endelig <- rbind(endelig, tmpend)
+}
+return(endelig)
+}
+
+
+(efa10 <- Ind_per_factor(efamodel1.2, slice_ma = 10, slice_mi = 5)) # Study indicators per factor
+
+
+       
+```
+Bruk funksjonen Ind_per_factor() til å studere indikatorer og ladninger per faktor (evt se på objektet efa10 over)
+
+Min tolkning av 10 faktor:   
+ML2: Jobbe med mennesker vs med ting(produkter,tall etc)\
+ML1: Fysisk styrke\
+ML4: Syn/lyd/orientering i rom\
+ML3: Praktisk vs teoretisk\
+ML8: Sosiale jobbferdigheter\
+ML9: Informasjonbehandling vs produkt?\
+ML7: Realfag vs humanfag\
+ML6=ML5: ???? (ingen tolkning)\
+ML10: Administrere og kundekontakt?\
+
+Totaltvurdering: Modell gir OK fit, men konvergeringsproblemer med fortrukket estimator. Høy item complexity. Best fit av modellene: Tucker Lewis Index of factoring reliability =  0.741, RMSEA index =  0.064
+
+Hver av faktorene forklarer mellom 6 og 13% av variasjonen. Flere av faktorene er vanskelig å tolke. Prøver modell med færre faktorer  
+
+----
+
+7 faktormodell
+
+```{r}
+#(efamodel2 <- fa(r=S, nfactors = 7 , fm='minres', n.obs = 301)) #No convergence
+(efamodel2.1 <- fa(r=S, nfactors = 7 , fm='ML', n.obs = 301))
+
+(efa7 <-Ind_per_factor(efamodel1.2, 10, 5))
+```
+Tolkning 7 faktorer  
+ML2: Grad av behov for kognitive ferdigheter (Substative complexity)\
+ML3: Kroppskontroll (bruk av kropp til å løse oppgaver)\
+ML1: Fysiske ferdigheter\
+ML4: Syn/lyd/orientering i rom\
+ML3: Praktisk vs teoretisk\
+ML6: Jobbe med mennesker vs med ting(produkter,tall etc)\
+ML7: Realfag vs abstakte fag?\
+ML5: Kreativitet/abstrakt tenking vs strukturert? (forklarer minst variasjon  8% og mest uklar)\
+
+
+Tolkning av alle faktorer. Forsøk med 6 faktorer
+
+```{r}
+(efamodel3 <- fa(r=S, nfactors = 6 , fm='minres', n.obs = 301)) 
+
+(efa6 <- Ind_per_factor(efamodel3, 10, 5))
+```
+
+
+Tolkning 6 faktorer  
+ML2: Grad av behov for kognitive ferdigheter (Substative complexity)\
+ML3: Kroppskontroll (bruk av kropp til å løse oppgaver)\
+ML1: Fysiske ferdigheter\
+ML4: Syn/lyd/orientering i rom\
+ML3: Praktisk vs teoretisk\
+ML6: Jobbe med mennesker vs med ting(produkter,tall etc)\
+ML7: Realfag vs abstakte fag?\
+ML5: Kreativitet/abstrakt tenking vs rask spontan eller egenskaper?\
+ (forklarer minst variasjon  8% og mest uklar)
+ 
+ 
+Fortsatt uklarhet i faktorstrukturen her (min tolkning). Mean item complexity =  2.2 Lewis Tucker=0.62.
+
+
+## 4 faktorer
+
+```{r}
+(efamodel4 <- fa(r=S, nfactors = 4, fm='minres', n.obs = 301)) #foretrukket modell
+(efa4 <- Ind_per_factor(efamodel4, 10, 5))
+```
+4 faktorer (som anbefalt av å se etter albuen i scree plot)
+
+MR2: Fysiske ferdigheter\
+MR1: Grad av behov for kognitive ferdigheter (Substative complexity)\
+MR4: Menneskelige/sosiale jobbferdigheter (lede, teamarbeid etc)\
+MR3: Jobbe med mennesker vs med ting(produkter,tall etc)\
+
+Mean item complexity =  1.5. Tucker Lewis= 0.73.
+
+Min vurdering: Beste modell med få, men beskrivbare faktorar. Mangler å beskrive en del variasjon 39 % (men bare 6% mindre enn 6 faktormodellen) 
+
+Modellen minner om Hadden(2004) sin faktoranalyse. Alle faktorene 1-4 virke like som i denne artikkelen. Men samtidig ser det noen forskjeller. Feks MR4 (som er kalt Byråkrati i artikkelen) virker mer sosialt rettet her. 
+
+
+```{r include=F}
+# (efamodel1.1 <- fa(r=S, nfactors = 7, fm= "ml", n.obs = 301))
+# (efamodel1.2 <- fa(r=S, nfactors = 6, fm= "ml", n.obs = 301))
+# 
+# 
+# (efamodel3 <- fa(r=S, nfactors = 4, fm='ml', n.obs = 301))
+# (efamodel4 <- fa(r=S, nfactors = 4, fm='pa', n.obs = 301))
+# (efamodel5 <- fa(r=S, nfactors = 4, fm='minres', n.obs = 301))
+# (efamodel6 <- fa(r=S, nfactors = 3, fm='minres', n.obs = 301))
+# (principal <- principal(r=S, nfactors = 4, n.obs = 301))
+
+```
+
+
+### Mulig andre spesifiseringer
+Splitte datasettet per område. Evt prøve modell som utelater fysiske egenskapene ettersom de driver mye av variasjonen i modellene?
+
+Har kode på å kjøre modell per område, men har ikke undersøkt i detalj
+
+```{r include=F}
+#Spliting dataset by  
+evner <- da[,grep("evner", names(da))]
+kunnskaper <- da[,grep("kunnskaper", names(da))]
+kompetanse <- da[,grep("kompetanse", names(da))]
+arbeidsoppgave <- da[,grep("arbeidsoppgave", names(da))]
+
+#Evner
+names(evner) <- str_split(names(evner),"\\.\\.\\.", simplify = T)[,2]
+E <- cor(evner, method = "pearson")
+corPlot(E, numbers = T)
+
+scree(E)
+fa.parallel(x= E, n.obs = 5000)
+(efamodelE <- fa(r=S, nfactors = 3, rotate = "none", fm= "ml", n.obs = ))
+fa.diagram(efamodelE, simple = T, cut = -2.5)
+
+#Kunnskaper
+names(kunnskaper) <- str_split(names(kunnskaper),"\\.\\.\\.", simplify = T)[,2]
+(K <- cor(kunnskaper, method = "pearson"))
+corPlot(K, numbers = T)
+
+scree(K)
+
+(efamodel2 <- fa(r=K, nfactors = 3, rotate = "none", fm= "ml", n.obs = 2000))
+fa.diagram(efamodel2, simple = T, cut = -2.5)
+
+#kompetanse
+names(kompetanse) <- str_split(names(kompetanse),"\\.\\.\\.", simplify = T)[,2]
+(Ko <- cor(kompetanse, method = "pearson"))
+corPlot(Ko, numbers = T)
+
+scree(Ko)
+
+(efamodel2 <- fa(r=Ko, nfactors = 3, rotate = "none", fm= "ml", n.obs = 2000))
+fa.diagram(efamodel2, simple = T, cut = -2.5)
+
+#arbeidsoppgave
+names(arbeidsoppgave) <- str_split(names(arbeidsoppgave),"\\.\\.\\.", simplify = T)[,2]
+(A <- cor(arbeidsoppgave, method = "pearson"))
+corPlot(A, numbers = T)
+
+scree(A)
+
+(efamodel2 <- fa(r=A, nfactors = 3, rotate = "none", fm= "ml", n.obs = 2000))
+fa.diagram(efamodel2, simple = F, cut = -2.5)
+
+```
+

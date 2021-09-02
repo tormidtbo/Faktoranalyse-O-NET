@@ -16,7 +16,7 @@ library(psych)
 
 
 
-data <- as_tibble(read.delim("C:\\Users\\torm\\OneDrive - Kompetanse Norge\\Dokumenter\\GitHub\\Onet\\Faktoranalyse-O-net\\onet_rdatasett.tsv"))
+data <- as_tibble(read.delim("C:\\Users\\torm\\OneDrive - Kompetanse Norge\\Dokumenter\\GitHub\\Onet\\Faktoranalyse-O-net\\onet_rdatasett.tsv", encoding = "UTF-8"))
 
 meta <- c("nr", "utdanningno_yrke", "BesÃ.kstall.pr.Ã.r.utdanning.no", "andel_menn", "andel_menn_0_40", "antall", "interesse")    
 da <- data[,!names(data) %in% meta] #removing meta data

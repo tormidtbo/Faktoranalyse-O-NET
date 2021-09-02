@@ -113,7 +113,7 @@ Hver av faktorene forklarer mellom 6 og 13% av variasjonen. Flere av faktorene e
 #(efamodel2 <- fa(r=S, nfactors = 7 , fm='minres', n.obs = 301)) #No convergence
 (efamodel2.1 <- fa(r=S, nfactors = 7 , fm='ML', n.obs = 301))
 
-(efa7 <-Ind_per_factor(efamodel1.2, 10, 5))
+(efa7 <-Ind_per_factor(efamodel2.1, 10, 5))
 ```
 Tolkning 7 faktorer  
 ML2: Grad av behov for kognitive ferdigheter (Substative complexity)\

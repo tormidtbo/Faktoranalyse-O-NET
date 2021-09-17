@@ -1,6 +1,8 @@
 ---
 title: "Faktoranalyse O*net"
-output: html_notebook
+output:
+  html_notebook: default
+  pdf_document: default
 ---
  
 
@@ -18,7 +20,10 @@ library(psych)
 
 data <- as_tibble(read.delim("C:\\Users\\torm\\OneDrive - Kompetanse Norge\\Dokumenter\\GitHub\\Onet\\Faktoranalyse-O-net\\onet_rdatasett.tsv", encoding = "UTF-8"))
 
-meta <- c("nr", "utdanningno_yrke", "BesÃ.kstall.pr.Ã.r.utdanning.no", "andel_menn", "andel_menn_0_40", "antall", "interesse")    
+#meta <- c("nr", "utdanningno_yrke", "BesÃ.kstall.pr.Ã.r.utdanning.no", "andel_menn", "andel_menn_0_40", "antall", "interesse")    
+meta <- c("nr", "utdanningno_yrke", "Besøkstall.pr.år.utdanning.no", "andel_menn", "andel_menn_0_40", "antall", "interesse")    
+
+
 da <- data[,!names(data) %in% meta] #removing meta data
 
 #Combined analysis
@@ -35,10 +40,7 @@ Descriptive analysis and graphical test for normality (requirement for factor an
 (dec <- describe(all)) # test normality assumptions. We want skew and kurtosis = 0. 
 mardia(all) #mardia is a test for normality
 ```
-```{r}
-mardia(all, plot = T) #mardia is a test for normality
 
-```
 
 Some issues with non-normality but does not look too bad graphically 
 
@@ -129,7 +131,7 @@ ML5: Kreativitet/abstrakt tenking vs strukturert? (forklarer minst variasjon  8%
 Tolkning av alle faktorer. Forsøk med 6 faktorer
 
 ```{r}
-(efamodel3 <- fa(r=S, nfactors = 6 , fm='minres', n.obs = 301)) 
+(efamodel3 <- fa(r=S, nfactors = 6, fm='minres', n.obs = 301)) 
 
 (efa6 <- Ind_per_factor(efamodel3, 10, 5))
 ```
@@ -155,6 +157,7 @@ Fortsatt uklarhet i faktorstrukturen her (min tolkning). Mean item complexity = 
 ```{r}
 (efamodel4 <- fa(r=S, nfactors = 4, fm='minres', n.obs = 301)) #foretrukket modell
 (efa4 <- Ind_per_factor(efamodel4, 10, 5))
+
 ```
 4 faktorer (som anbefalt av å se etter albuen i scree plot)
 
@@ -185,7 +188,7 @@ Modellen minner om Hadden(2004) sin faktoranalyse. Alle faktorene 1-4 virke like
 
 
 ### Mulig andre spesifiseringer
-Splitte datasettet per område. Evt prøve modell som utelater fysiske egenskapene ettersom de driver mye av variasjonen i modellene?
+Splitte datasettet per område. Evt prøve modell som utelater fysiske egenskapene ettersom de driver mye av variasjonen i modellene? Fjerne 
 
 Har kode på å kjøre modell per område, men har ikke undersøkt i detalj
 
@@ -237,4 +240,17 @@ scree(A)
 fa.diagram(efamodel2, simple = F, cut = -2.5)
 
 ```
+Forsøk med å utelate kunnskaper
+```{r}
+all.uk <- da[,-grep("kunnskaper", names(da))]
+S.2 <- cor(all.uk, method = "pearson")
+fa.parallel(x= S.2, n.obs = 301)
+
+
+(efamodel4.uk <- fa(r=S.2, nfactors = 4, fm='minres', n.obs = 301)) #foretrukket modell
+(efa4.uk <- Ind_per_factor(efamodel4.uk, 10, 5))
+
+
+```
+
 
